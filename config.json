@@ -1,4 +1,4 @@
 {
   "daily_token_limit": 9900000,
-  "warning_threshold_percent": 90
+  "warning_threshold_percent": 95
 }
