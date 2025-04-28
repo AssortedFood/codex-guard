@@ -1,9 +1,3 @@
-<p align="center">
-  <img src="https://img.shields.io/npm/v/codex-guard.svg" alt="npm version" />
-  <img src="https://img.shields.io/github/last-commit/your-org/your-repo.svg" alt="Last commit" />
-  <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License" />
-</p>
-
 # CodexGuard
 
 A lightweight CLI wrapper around the OpenAI Codex CLI that enforces a configurable daily token cap and gracefully shuts down when the limit is reached.
