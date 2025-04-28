@@ -13,16 +13,11 @@ let warnedHigh = false;
 let stdoutBuffer = '';
 
 // Load global config from ~/projects/codex-guard/config.json
-const globalConfigPath = path.join(
-  os.homedir(),
-  'projects',
-  'codex-guard',
-  'config.json'
-);
-if (!fs.existsSync(globalConfigPath)) {
+const configPath = path.join(__dirname, 'config.json');
+if (!fs.existsSync(configPath)) {
   console.error(
     chalk.red(
-      `[CodexGuard] Missing global config at ${globalConfigPath}` +
+      `[CodexGuard] Missing global config at ${configPath}` +
         ` – please create it with daily_token_limit and warning_threshold_percent.`
     )
   );
@@ -31,7 +26,7 @@ if (!fs.existsSync(globalConfigPath)) {
 const {
   daily_token_limit: DAILY_TOKEN_LIMIT,
   warning_threshold_percent: HIGH_WARNING_PERCENT = 95,
-} = JSON.parse(fs.readFileSync(globalConfigPath, 'utf8'));
+} = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 // Strip ANSI escape codes
 function stripAnsi(s) {
