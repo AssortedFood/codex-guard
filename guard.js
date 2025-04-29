@@ -1,11 +1,9 @@
 // guard.js
-
 const { spawn } = require('child_process');
 const { fetchTodayUsage } = require('./usage');
 const path = require('path');
 const fs = require('fs');
-const os = require('os');
-const chalk = require('chalk');
+const logger = require('./logger');
 
 let codexProcess = null;
 let pendingShutdown = false;
@@ -15,11 +13,8 @@ let stdoutBuffer = '';
 // Load global config from ~/projects/codex-guard/config.json
 const configPath = path.join(__dirname, 'config.json');
 if (!fs.existsSync(configPath)) {
-  console.error(
-    chalk.red(
-      `[CodexGuard] Missing global config at ${configPath}` +
-        ` – please create it with daily_token_limit and warning_threshold_percent.`
-    )
+  logger.error(
+    `Missing global config at ${configPath} – please create it with daily_token_limit and warning_threshold_percent.`
   );
   process.exit(1);
 }
@@ -29,8 +24,8 @@ const {
 } = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
 // Strip ANSI escape codes
-function stripAnsi(s) {
-  return s.replace(/\x1b\[[0-9;]*m/g, '');
+function stripAnsi(str) {
+  return str.replace(/\x1b\[[0-9;]*m/g, '');
 }
 
 // Watch for “send a message” prompt (only once shutdown is pending)
@@ -39,9 +34,7 @@ function watchForPrompt(chunk) {
 
   stdoutBuffer += stripAnsi(chunk.toString()).toLowerCase();
   if (stdoutBuffer.includes('send a message')) {
-    console.error(
-      chalk.red('[CodexGuard] Request complete — shutting down Codex session.')
-    );
+    logger.error('Request complete — shutting down Codex session.');
     codexProcess.kill('SIGTERM');
   }
 
@@ -55,11 +48,7 @@ function watchForPrompt(chunk) {
 function requestShutdown() {
   if (pendingShutdown) return;
   pendingShutdown = true;
-  console.error(
-    chalk.red(
-      '[CodexGuard] Daily token cap reached — will shut down after this response.'
-    )
-  );
+  logger.error('Daily token cap reached — will shut down after this response.');
 }
 
 // Spawn the Codex CLI, teeing stdout through our watcher
@@ -87,38 +76,26 @@ async function firstUsageCheck() {
     const lFmt = DAILY_TOKEN_LIMIT.toLocaleString();
 
     if (used >= DAILY_TOKEN_LIMIT) {
-      console.error(
-        chalk.red(
-          `[CodexGuard] You are already over your daily cap! (${uFmt}/${lFmt}).`
-        )
-      );
+      logger.error(`You are already over your daily cap! (${uFmt}/${lFmt}).`);
       return true;
     }
 
     // Not over yet: warn or show usage
     if (pct >= HIGH_WARNING_PERCENT) {
-      console.warn(
-        chalk.yellow(
-          `[CodexGuard] Warning: ${pct.toFixed(
-            1
-          )}% of daily limit used (${uFmt}/${lFmt}).`
-        )
+      logger.warn(
+        `Warning: ${pct.toFixed(1)}% of daily limit used (${uFmt}/${lFmt}).`
       );
       warnedHigh = true;
     } else {
-      console.log(
-        chalk.cyan(`[CodexGuard] Usage: ${uFmt}/${lFmt} (${pct.toFixed(1)}%)`)
-      );
+      logger.info(`Usage: ${uFmt}/${lFmt} (${pct.toFixed(1)}%)`);
     }
   } catch (err) {
-    console.error(
-      chalk.red(`[CodexGuard] Initial usage check failed: ${err.message}`)
-    );
+    logger.error(`Initial usage check failed: ${err.message}`);
   }
   return false;
 }
 
-// Poll usage every 60s, auto-shutdown if cap crossed mid-session
+// Poll usage every 60 s, auto-shutdown if cap crossed mid-session
 function startUsagePolling() {
   setInterval(async () => {
     try {
@@ -128,12 +105,8 @@ function startUsagePolling() {
       const lFmt = DAILY_TOKEN_LIMIT.toLocaleString();
 
       if (!warnedHigh && pct >= HIGH_WARNING_PERCENT) {
-        console.warn(
-          chalk.yellow(
-            `[CodexGuard] Warning: ${pct.toFixed(
-              1
-            )}% of daily limit used (${uFmt}/${lFmt}).`
-          )
+        logger.warn(
+          `Warning: ${pct.toFixed(1)}% of daily limit used (${uFmt}/${lFmt}).`
         );
         warnedHigh = true;
       }
@@ -141,16 +114,10 @@ function startUsagePolling() {
       if (used >= DAILY_TOKEN_LIMIT) {
         requestShutdown();
       } else {
-        console.log(
-          chalk.cyan(
-            `[CodexGuard] Usage: ${uFmt}/${lFmt} (${pct.toFixed(1)}%)`
-          )
-        );
+        logger.info(`Usage: ${uFmt}/${lFmt} (${pct.toFixed(1)}%)`);
       }
     } catch (err) {
-      console.error(
-        chalk.red(`[CodexGuard] Usage check failed: ${err.message}`)
-      );
+      logger.error(`Usage check failed: ${err.message}`);
     }
   }, 60_000);
 }
@@ -158,7 +125,7 @@ function startUsagePolling() {
 // Entrypoint
 async function main() {
   const args = process.argv.slice(2);
-  console.log(chalk.green(`[CodexGuard] Launched ${args.join(' ')}`));
+  logger.success(`Launched ${args.join(' ')}`);
 
   runCodex(args);
 
