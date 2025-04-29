@@ -77,6 +77,7 @@ async function firstUsageCheck() {
 
     if (used >= DAILY_TOKEN_LIMIT) {
       logger.error(`You are already over your daily cap! (${uFmt}/${lFmt}).`);
+      requestShutdown();
       return true;
     }
 
