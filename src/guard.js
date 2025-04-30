@@ -14,18 +14,17 @@ let lastUsageCheck = 0;
 // Load global config from project root
 const configPath = path.join(__dirname, '../config.json');
 if (!fs.existsSync(configPath)) {
-  logger.error(`Missing global config at ${configPath} – please create it with daily_token_limit, warning_threshold_percent, and usage_check_interval_seconds.`);
+  logger.error(`Missing global config at ${configPath} – please create it with the required fields.`);
   process.exit(1);
 }
 const {
   daily_token_limit: DAILY_TOKEN_LIMIT,
   warning_threshold_percent: HIGH_WARNING_PERCENT = 95,
   usage_check_interval_seconds: USAGE_INTERVAL = 60,
-  trigger_string: TRIGGER = 'send a message',
+  idle_alert: IDLE_ALERT = false,
 } = JSON.parse(fs.readFileSync(configPath, 'utf8'));
 
-
-/** 
+/**
  * Perform a usage/API check and handle warnings or shutdown.
  */
 async function doUsageCheck() {
@@ -62,11 +61,16 @@ function requestShutdown() {
   }
 }
 
+// Hard-coded trigger string
+const TRIGGER = 'send a message';
+
 // Create a detector for our trigger string
 const detector = createDetector(TRIGGER, { bufferMax: 200 });
 detector.onDetect(() => {
-  // Always notify on trigger
-  setTimeout(() => process.stdout.write('\x07'), 100);
+  // Idle alert (BEL) if enabled
+  if (IDLE_ALERT) {
+    setTimeout(() => process.stdout.write('\x07'), 100);
+  }
 
   // Trigger a usage check only if enough time has passed
   const now = Date.now();
@@ -82,7 +86,6 @@ detector.onDetect(() => {
     codexProcess.kill('SIGTERM');
   }
 });
-
 
 /**
  * Spawn the Codex CLI and wire up the detector.
@@ -101,7 +104,6 @@ function runCodex(args) {
 
   codexProcess.on('exit', () => process.exit(0));
 }
-
 
 async function main() {
   const args = process.argv.slice(2);
