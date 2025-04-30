@@ -1,4 +1,4 @@
-// usage.js
+// src/usage.js
 
 const fetch = require('node-fetch');
 

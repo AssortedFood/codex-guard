@@ -1,4 +1,4 @@
-// notifier.js
+// src/notifier.js
 
 /**
  * Simple ANSI-stripper (removes CSI [m sequences)

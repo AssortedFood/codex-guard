@@ -1,4 +1,4 @@
-// logger.js
+// src/logger.js
 const fs = require('fs');
 const chalk = require('chalk');
 
