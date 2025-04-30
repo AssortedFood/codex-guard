@@ -45,7 +45,7 @@ node guard.js --full-auto
 Or add an alias in your shell:
 
 ```bash
-alias codex="node /path/to/codex-guard/guard.js --full-auto"
+alias codex="node /path/to/codex-guard/src/guard.js --full-auto"
 ```
 
 Then:
