@@ -4,6 +4,7 @@ const path = require('path');
 
 const VALID_STAGES = [
   'initialized',
+  'draft-objective',
   'refine-high',
   'refine-sub',
   'score-split',
