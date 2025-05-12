@@ -19,7 +19,7 @@ program
   .action((args = []) => {
     const result = spawnSync(
       'node',
-      [GUARD_PATH, ...args],
+      [GUARD_PATH, '--full-auto', ...args],
       { stdio: 'inherit' }
     );
     process.exit(result.status);
