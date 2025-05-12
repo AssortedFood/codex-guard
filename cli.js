@@ -1,56 +1,56 @@
 #!/usr/bin/env node
-const { spawnSync } = require('child_process');
-const path          = require('path');
-const { Command }   = require('commander');
+const fs           = require('fs');
+const path         = require('path');
+const { spawnSync }= require('child_process');
+const initCmd      = require('./src/commands/init');
+const { loadState }= require('./src/stateManager');
 
-const GUARD_PATH = path.resolve(__dirname, 'src/guard.js');
-const program    = new Command();
+const LEGACY_PATH  = path.resolve(__dirname, 'src/guard.js');
+const STAGES_DIR   = path.resolve(__dirname, 'src/stages');
+const guardDir     = path.join(process.cwd(), '.guard');
 
-program
-  .name('guard')
-  .description('Codex-Guard CLI: run, init, exec, validate')
-  .usage('<command> [options]');
+async function main() {
+  const [,, cmd] = process.argv;
 
-// “run” just proxies to your existing guard.js
-program
-  .command('run [args...]')
-  .description('Spawn codex with token cap and idle alerts (legacy behavior)')
-  .allowUnknownOption()            // pass through flags to guard.js
-  .action((args = []) => {
-    const result = spawnSync(
-      'node',
-      [GUARD_PATH, '--full-auto', ...args],
-      { stdio: 'inherit' }
-    );
-    process.exit(result.status);
-  });
+  if (cmd === 'init') {
+    // bootstrap .guard and then resume into the next stage
+    await initCmd();
+    return;
+  }
 
-// New sentinel commands
-program
-  .command('init')
-  .description('Initialize a new .guard directory and seed OBJECTIVE.md, plan.json, state.json')
-  .action(() => {
-    require('./src/commands/init')();
-  });
+  // no args: auto-detect mode
+  if (!fs.existsSync(guardDir)) {
+    // no sentinel state => legacy
+    spawnSync('node', [LEGACY_PATH, '--full-auto'], { stdio: 'inherit' });
+    return;
+  }
 
-program
-  .command('exec')
-  .description('Run through your plan.json tasks in autopilot mode')
-  .action(() => {
-    require('./src/commands/exec')();
-  });
+  // have .guard/ – load state
+  let state;
+  try {
+    state = loadState();
+  } catch (err) {
+    console.error(`❌  Could not load state.json: ${err.message}`);
+    process.exit(1);
+  }
 
-program
-  .command('validate')
-  .description('Validate completed tasks via AI and mark them validated')
-  .action(() => {
-    require('./src/commands/validate')();
-  });
+  if (state.stage === 'done') {
+    // sentinel finished -> legacy
+    spawnSync('node', [LEGACY_PATH, '--full-auto'], { stdio: 'inherit' });
+    return;
+  }
 
-// If no subcommand provided, show help
-if (process.argv.length < 3) {
-  program.outputHelp();
-  process.exit(1);
+  // in-progress sentinel -> dispatch to the right stage handler
+  const handlerFile = path.join(STAGES_DIR, `${state.stage}.js`);
+  if (!fs.existsSync(handlerFile)) {
+    console.error(`❌  No stage handler for "${state.stage}" at ${handlerFile}`);
+    process.exit(1);
+  }
+  const { run } = require(handlerFile);
+  await run(state);
 }
 
-program.parse(process.argv);
+main().catch(err => {
+  console.error('Fatal:', err);
+  process.exit(1);
+});
