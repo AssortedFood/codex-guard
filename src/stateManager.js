@@ -3,8 +3,8 @@ const fs   = require('fs');
 const path = require('path');
 
 const VALID_STAGES = [
-  'initialized',
   'draft-objective',
+  'draft-usage',
   'refine-high',
   'refine-sub',
   'score-split',

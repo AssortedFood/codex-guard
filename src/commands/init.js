@@ -23,7 +23,7 @@ module.exports = async function init() {
       }
       fs.copyFileSync(tmpl, dest);
       fs.writeFileSync(planPath, '[]\n', 'utf8');
-      saveState({ stage: 'initialized' });
+      saveState({ stage: 'draft-objective' });
       console.log('✅  Initialized sentinel scaffolding in .guard/');
     } catch (err) {
       console.error(`❌  Failed to bootstrap .guard/: ${err.message}`);
