@@ -3,84 +3,72 @@
 const path  = require('path');
 const { spawn } = require('child_process');
 
-// Toggle this to true to see debug logs and Codex output
+// Toggle to true to log the full `codex` command
 const DEBUG = false;
 
 /**
- * Instructs the Codex CLI to edit a file in place using its built-in file-writing capability.
- * Shows a spinner while the Codex process is running.
+ * Spawn Codex in auto-edit/quiet mode, parse its JSON stdout,
+ * and invoke onEvent(msg) for each parsed JSON object.
  *
- * @param {string} promptMessage - A concise instruction for the edit.
- * @param {string} filePath      - Path to the target file (relative to project root, e.g. ".guard/objective.md").
- * @param {string} userFeedback  - The user’s single-line feedback.
+ * @param {string} promptMessage  Instruction for Codex.
+ * @param {string} filePath       Relative path to the file.
+ * @param {string} feedback       User’s feedback.
+ * @param {(msg: object) => void} onEvent  Callback for each JSON event.
  * @returns {Promise<void>}
  */
-function writeFileWithCodex(promptMessage, filePath, userFeedback) {
+function runCodexAutoEdit(promptMessage, filePath, feedback, onEvent) {
   return new Promise((resolve, reject) => {
-    const relativePath = path.relative(process.cwd(), filePath);
-
+    const relative = path.relative(process.cwd(), filePath);
     const instruction = [
       promptMessage,
-      `File: ${relativePath}`,
-      `Feedback: ${userFeedback}`,
-      `Please modify only this file. Do not read, list, or write any other files.`,
-      `Do not execute shell commands, git commands, or external tool calls.`
+      `File: ${relative}`,
+      `Feedback: ${feedback}`,
+      `Modify only this file; do not inspect or write any other files.`
     ].join('\n');
 
-    const cmd = [
-      'codex',
-      '-a', 'auto-edit',
-      '--quiet',
-      instruction
-    ];
+    const cmd = ['codex', '-a', 'auto-edit', '--quiet', instruction];
 
     if (DEBUG) {
-      console.log(`\n🔧 Running: ${cmd.map(arg =>
-        arg.includes('\n') ? `"${arg}"` : arg
-      ).join(' ')}\n`);
-    }
-
-    // Hide output from Codex unless in DEBUG mode
-    const stdioOption = DEBUG
-      ? ['pipe', 'inherit', 'inherit']
-      : ['pipe', 'ignore', 'ignore'];
-
-    // Start spinner if not debugging
-    let spinner;
-    if (!DEBUG) {
-      const frames = ['|','/','-','\\'];
-      let i = 0;
-      spinner = setInterval(() => {
-        process.stdout.write(`\r⏳ ${frames[i = (i + 1) % frames.length]} Editing ${relativePath}`);
-      }, 100);
+      console.log('🔧 [codexWriter] Running:', cmd.map(a =>
+        a.includes('\n') ? `"${a}"` : a
+      ).join(' '));
     }
 
     const proc = spawn(cmd[0], cmd.slice(1), {
-      stdio: stdioOption,
+      stdio: ['ignore', 'pipe', 'ignore'],
       cwd: process.cwd()
     });
 
-    proc.on('error', err => {
-      if (spinner) {
-        clearInterval(spinner);
-        process.stdout.write('\r'); // clear spinner line
+    let buffer = '';
+    proc.stdout.setEncoding('utf8');
+
+    proc.stdout.on('data', chunk => {
+      buffer += chunk;
+      const lines = buffer.split(/\r?\n/);
+      buffer = lines.pop(); // incomplete tail
+
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let msg;
+        try {
+          msg = JSON.parse(line);
+        } catch (e) {
+          if (DEBUG) console.error('🔁 JSON parse error:', e, line);
+          continue;
+        }
+        // Only propagate the events the UI cares about:
+        if (msg.type === 'function_call' || msg.type === 'function_call_output') {
+          onEvent(msg);
+        }
       }
-      if (DEBUG) console.error('✖ Codex process error:', err);
-      reject(err);
     });
 
+    proc.on('error', err => reject(err));
     proc.on('exit', code => {
-      if (spinner) {
-        clearInterval(spinner);
-        process.stdout.write('\r'); // clear spinner line
-      }
-      if (DEBUG) console.log(`ℹ Codex exited with code ${code}`);
-      if (code !== 0) {
-        return reject(new Error(`codex exited with code ${code}`));
-      }
-      resolve();
+      if (code === 0) return resolve();
+      return reject(new Error(`codex exited with code ${code}`));
     });
   });
 }
 
-module.exports = { writeFileWithCodex };
+module.exports = { runCodexAutoEdit };

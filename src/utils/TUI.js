@@ -1,11 +1,13 @@
 // src/utils/TUI.js
 
-const fs = require('fs');
-const { prompt } = require('enquirer');
+const fs       = require('fs');
+const path     = require('path');
+const readline = require('readline');
+const chalk    = require('chalk');
+const { runCodexAutoEdit } = require('./codexWriter');
 
 /**
  * Display a file’s contents to the user.
- * @param {string} filePath - Path to the file to show.
  */
 function showFile(filePath) {
   console.log(`\n📄 ${filePath}:\n`);
@@ -14,27 +16,79 @@ function showFile(filePath) {
 
 /**
  * Prompt the user for single-line feedback or a proceed command.
- * Hitting Enter submits whatever was typed.
- *
- * @param {string} message - The prompt message to display.
- * @param {string} [proceedKeyword='/proceed'] - The keyword that signals completion.
- * @returns {Promise<{isProceed: boolean, feedback: string}>}
  */
-async function askFeedbackOrProceed(message, proceedKeyword = '/proceed') {
-  const { userInput } = await prompt({
-    type: 'input',
-    name: 'userInput',
-    message
+function askFeedbackOrProceed(message, proceedKeyword = '/proceed') {
+  return new Promise(resolve => {
+    const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
+    rl.question(`${message}\n> `, answer => {
+      rl.close();
+      const t = answer.trim();
+      resolve({ isProceed: t === proceedKeyword, feedback: t === proceedKeyword ? '' : answer });
+    });
   });
+}
 
-  if (userInput.trim() === proceedKeyword) {
-    return { isProceed: true, feedback: '' };
-  } else {
-    return { isProceed: false, feedback: userInput };
+/**
+ * Show a spinner + latest event while Codex runs, then print final status.
+ *
+ * @param {string} promptMessage
+ * @param {string} filePath
+ * @param {string} feedback
+ */
+async function codexEditWithSpinner(promptMessage, filePath, feedback) {
+  const relative = path.relative(process.cwd(), filePath);
+  let lastEvent = '';
+
+  const frames = ['|','/','-','\\'];
+  let idx = 0;
+  function redraw() {
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    process.stdout.write(
+      chalk.dim(`⏳ ${frames[idx % frames.length]} Editing ${relative}`) +
+      (lastEvent ? '  ' + lastEvent : '')
+    );
+  }
+
+  const spinner = setInterval(() => {
+    idx++;
+    redraw();
+  }, 100);
+
+  try {
+    await runCodexAutoEdit(promptMessage, filePath, feedback, msg => {
+      if (msg.type === 'function_call') {
+        lastEvent = chalk.cyan(`⚙️  ${msg.name}()`);
+      } else if (msg.type === 'function_call_output') {
+        const code = msg.metadata?.exit_code;
+        if (code === 0) {
+          lastEvent = chalk.green(`✅ ${msg.call_id}`);
+        } else if (typeof code === 'number') {
+          lastEvent = chalk.red(`✖ ${msg.call_id} (${code})`);
+        } else {
+          lastEvent = chalk.yellow(`⚠ ${msg.call_id}`);
+        }
+      }
+      redraw();
+    });
+
+    // final success
+    clearInterval(spinner);
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    console.log(chalk.green(`✔ ${relative} updated successfully`));
+
+  } catch (err) {
+    clearInterval(spinner);
+    readline.clearLine(process.stdout, 0);
+    readline.cursorTo(process.stdout, 0);
+    console.log(chalk.red(`✖ codex failed: ${err.message}`));
+    throw err;
   }
 }
 
 module.exports = {
   showFile,
-  askFeedbackOrProceed
+  askFeedbackOrProceed,
+  codexEditWithSpinner
 };
