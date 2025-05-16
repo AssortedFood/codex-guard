@@ -7,7 +7,7 @@ const { spawn } = require('child_process');
 const DEBUG = false;
 
 /**
- * Spawn Codex in auto-edit/quiet mode, parse its JSON stdout,
+ * Spawn Codex in full-auto/quiet mode, parse its JSON stdout,
  * and invoke onEvent(msg) for each parsed JSON object.
  *
  * @param {string} promptMessage  Instruction for Codex.
@@ -26,7 +26,7 @@ function runCodexAutoEdit(promptMessage, filePath, feedback, onEvent) {
       `Modify only this file; do not inspect or write any other files.`
     ].join('\n');
 
-    const cmd = ['codex', '-a', 'auto-edit', '--quiet', instruction];
+    const cmd = ['codex', '-a', 'full-auto', '--quiet', instruction];
 
     if (DEBUG) {
       console.log('🔧 [codexWriter] Running:', cmd.map(a =>

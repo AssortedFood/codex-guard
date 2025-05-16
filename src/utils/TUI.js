@@ -66,7 +66,7 @@ async function codexEditWithSpinner(promptMessage, filePath, feedback) {
         } else if (typeof code === 'number') {
           lastEvent = chalk.red(`✖ ${msg.call_id} (${code})`);
         } else {
-          lastEvent = chalk.yellow(`⚠ ${msg.call_id}`);
+          lastEvent = chalk.cyan(`🔮 ${msg.call_id}`);
         }
       }
       redraw();
