@@ -1,11 +1,15 @@
 // src/stages/draft-objective.js
 
-const path                     = require('path');
+const fs = require('fs');
+const path = require('path');
 const { showFile, askFeedbackOrProceed, codexEditWithSpinner } = require('../utils/TUI');
-const { saveState }            = require('../stateManager');
-const { runCurrentStage }      = require('../orchestrator');
+const { saveState } = require('../stateManager');
+const { runCurrentStage } = require('../orchestrator');
 
 const OBJECTIVE_PATH = path.join(process.cwd(), '.guard', 'objective.md');
+// load the template with your instruction
+const TEMPLATE_PATH  = path.resolve(__dirname, '../../prompt-templates/draft-objective.md');
+const DRAFT_INSTRUCTION = fs.readFileSync(TEMPLATE_PATH, 'utf8').trim();
 
 async function run(state) {
   // 1) Loop until the user types '/proceed'
@@ -25,7 +29,7 @@ async function run(state) {
 
     // 3) Otherwise, send feedback to Codex via the TUI spinner wrapper
     await codexEditWithSpinner(
-      'Update the `# Objective` section of this file. Incorporate the following feedback:',
+      DRAFT_INSTRUCTION,
       OBJECTIVE_PATH,
       feedback
     );
