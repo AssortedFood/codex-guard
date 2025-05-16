@@ -1,5 +1,8 @@
 # TODO
 
+### rebooting when usage is zeroed
+- push notification asking to restart on UTC 00:00
+
 ### notifications
 - support mobile push notifications (e.g. Pushover/Pushbullet)
 
