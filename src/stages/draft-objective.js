@@ -1,97 +1,49 @@
 // src/stages/draft-objective.js
-const fs = require('fs');
-const path = require('path');
-const { saveState } = require('../stateManager');
-const { spawnSync } = require('child_process');
-const {
-  createScreen, createBox, createLog
-} = require('../ui/blessedHelpers');
 
-async function run() {
-  const guardDir = path.join(process.cwd(), '.guard');
-  const filePath = path.join(guardDir, 'objective.md');
+const fs                = require('fs');
+const path              = require('path');
+const { prompt }        = require('enquirer');
+const { writeFileWithCodex } = require('../utils/codexWriter');
+const { saveState }     = require('../stateManager');
+const { runCurrentStage } = require('../orchestrator');
 
-  // Ensure template exists
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, '# Objective\n\n', 'utf8');
-  }
+const OBJECTIVE_PATH = path.join(process.cwd(), '.guard', 'objective.md');
 
-  // Read initial content
-  let content = fs.readFileSync(filePath, 'utf8');
+async function run(state) {
+  // 1) Loop until the user types '/proceed'
+  while (true) {
+    // 1a) Display current contents
+    console.log('\n📝 Current objective:\n');
+    console.log(fs.readFileSync(OBJECTIVE_PATH, 'utf8'));
 
-  const screen = createScreen('Draft Objective');
-
-  // Main UI components
-  const editorBox = createBox({
-    top: 1, left: 0,
-    width: '100%', height: '70%',
-    label: ' {bold}Objective Editor{/bold} ',
-    content
-  });
-  screen.append(editorBox);
-
-  const log = createLog({
-    top: '70%', left: 0,
-    width: '100%', height: '25%',
-    label: ' {bold}Instructions{/bold} '
-  });
-  screen.append(log);
-
-  screen.render();
-
-  // Helper to run Codex auto-edit
-  function autoEdit(feedback) {
-    const prompt = `Based on this feedback: "${feedback}", edit .guard/objective.md`;
-    const res = spawnSync('codex', ['-a','auto-edit','--quiet', prompt], {
-      encoding: 'utf8'
+    // 1b) Prompt for feedback or proceed
+    const { userInput } = await prompt({
+      type: 'input',
+      name: 'userInput',
+      message: 'Enter feedback to improve the Objective, or type `/proceed` to finish:',
     });
-    if (res.status !== 0) {
-      throw new Error(`Codex failed: ${res.stderr}`);
+
+    // 2) If user signals done, exit loop
+    if (userInput.trim() === '/proceed') {
+      break;
     }
-    content = res.stdout;
-    fs.writeFileSync(filePath, content, 'utf8');
+
+    // 3) Otherwise, send feedback to Codex and update the file
+    await writeFileWithCodex({
+      filePath: OBJECTIVE_PATH,
+      instruction: [
+        'Update only the `# Objective` section of this file.',
+        'Incorporate the following feedback:',
+        userInput
+      ].join('\n\n')
+    });
+    // Loop back to show the updated version
   }
 
-  // Interaction loop
-  const readline = require('readline').createInterface({
-    input: process.stdin,
-    output: process.stdout
-  });
-
-  function ask(question) {
-    return new Promise(resolve =>
-      readline.question(question, ans => resolve(ans.trim()))
-    );
-  }
-
-  try {
-    while (true) {
-      // Show current content
-      editorBox.setContent(content);
-      log.log("Enter natural-language feedback, or just press Enter to skip:");
-      screen.render();
-
-      const feedback = await ask('Feedback: ');
-      if (feedback) {
-        autoEdit(feedback);
-      }
-
-      // Re-render and ask approval
-      editorBox.setContent(content);
-      log.log('Preview updated. Approve? (y/n)');
-      screen.render();
-
-      const approve = (await ask('Approve? ')).toLowerCase();
-      if (approve === 'y' || approve === 'yes') break;
-    }
-  } finally {
-    readline.close();
-  }
-
-  // Final save & state transition
+  // 4) Advance state to the next stage
   saveState({ stage: 'draft-usage' });
-  screen.destroy();
-  console.log('\n✅ Objective finalized. Moving to draft-usage.\n');
+  console.log('\n✅  Objective finalized. Moving on to draft-usage.\n');
+  await runCurrentStage();
 }
 
 module.exports = { run };
