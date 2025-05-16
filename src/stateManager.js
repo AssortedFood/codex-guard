@@ -1,5 +1,5 @@
 // src/stateManager.js
-const fs   = require('fs');
+const fs = require('fs');
 const path = require('path');
 
 const VALID_STAGES = [

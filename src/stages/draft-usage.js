@@ -19,7 +19,7 @@ async function run(state) {
 
     // Prompt for feedback or proceed
     const { isProceed, feedback } = await askFeedbackOrProceed(
-      'Enter feedback to improve the Usage section, or type `/proceed` to finish:'
+      'Enter feedback to improve the Usage file, or type `/proceed` to finish:'
     );
 
     // If user signals done, exit loop

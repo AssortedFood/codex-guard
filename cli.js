@@ -1,13 +1,15 @@
 #!/usr/bin/env node
-const fs           = require('fs');
-const path         = require('path');
-const { spawnSync }= require('child_process');
-const initCmd      = require('./src/commands/init');
-const { loadState }= require('./src/stateManager');
+// cli.js
+const fs = require('fs');
+const path = require('path');
+const { spawnSync } = require('child_process');
+const initCmd = require('./src/commands/init');
+const { loadState } = require('./src/stateManager');
+const { runCurrentStage } = require('./src/orchestrator');
 
-const LEGACY_PATH  = path.resolve(__dirname, 'src/guard.js');
-const STAGES_DIR   = path.resolve(__dirname, 'src/stages');
-const guardDir     = path.join(process.cwd(), '.guard');
+const LEGACY_PATH = path.resolve(__dirname, 'src/guard.js');
+const STAGES_DIR  = path.resolve(__dirname, 'src/stages');
+const guardDir    = path.join(process.cwd(), '.guard');
 
 async function main() {
   const [,, cmd] = process.argv;
@@ -35,19 +37,13 @@ async function main() {
   }
 
   if (state.stage === 'done') {
-    // sentinel finished -> legacy
+    // sentinel finished → fall back to legacy Codex
     spawnSync('node', [LEGACY_PATH, '--full-auto'], { stdio: 'inherit' });
     return;
   }
 
-  // in-progress sentinel -> dispatch to the right stage handler
-  const handlerFile = path.join(STAGES_DIR, `${state.stage}.js`);
-  if (!fs.existsSync(handlerFile)) {
-    console.error(`❌  No stage handler for "${state.stage}" at ${handlerFile}`);
-    process.exit(1);
-  }
-  const { run } = require(handlerFile);
-  await run(state);
+  // in-progress sentinel → hand off to the orchestrator
+  await runCurrentStage(state);
 }
 
 main().catch(err => {

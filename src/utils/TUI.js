@@ -1,16 +1,17 @@
 // src/utils/TUI.js
 
-const fs       = require('fs');
-const path     = require('path');
+const fs = require('fs');
+const path = require('path');
 const readline = require('readline');
-const chalk    = require('chalk');
+const chalk = require('chalk');
 const { runCodexAutoEdit } = require('./codexWriter');
 
 /**
  * Display a file’s contents to the user.
  */
 function showFile(filePath) {
-  console.log(`\n📄 ${filePath}:\n`);
+  const relativePath = path.relative(process.cwd(), filePath);
+  console.log(`\n📄 ${relativePath}:\n`);
   console.log(fs.readFileSync(filePath, 'utf8'));
 }
 

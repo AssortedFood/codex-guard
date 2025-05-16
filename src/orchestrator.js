@@ -1,9 +1,10 @@
 // src/orchestrator.js
-const fs       = require('fs');
-const path     = require('path');
+const fs = require('fs');
+const path = require('path');
+const chalk = require('chalk');
 const { loadState } = require('./stateManager');
 
-const STAGE_DIR = path.resolve(__dirname, 'stages');
+const STAGE_DIR    = path.resolve(__dirname, 'stages');
 const VALID_STAGES = require('./stateManager').VALID_STAGES;
 
 /**
@@ -17,6 +18,13 @@ async function runCurrentStage(overrideState) {
   if (!VALID_STAGES.includes(stage)) {
     throw new Error(`Cannot run unknown stage "${stage}"`);
   }
+
+  // 🎨 Print a colored header:
+  console.log(
+    chalk.cyan('\n─── STAGE: ') +
+    chalk.green.bold(stage.toUpperCase()) +
+    chalk.cyan(' ───\n')
+  );
 
   const handlerFile = path.join(STAGE_DIR, `${stage}.js`);
   if (!fs.existsSync(handlerFile)) {
