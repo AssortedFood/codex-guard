@@ -23,7 +23,7 @@ function runCodexAutoEdit(promptMessage, filePath, feedback, onEvent) {
       promptMessage,
       `File: ${relative}`,
       `Feedback: ${feedback}`,
-      `Modify only this file; do not inspect or write any other files.`
+      `Modify only this file; do not inspect or write any other files, and do not make any unrelated tool calls (e.g. git).`
     ].join('\n');
 
     const cmd = ['codex', '-a', 'full-auto', '--quiet', instruction];
