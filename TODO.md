@@ -62,11 +62,10 @@
 - -u or --usage // to call node src/usage.js
 - -p or --persistent // when guard reaches the token limit and kills codex, it waits until UTC 00:00 where it calls usage to confirm that the token limit has reset and then restarts codex from the last stage
 
-### notifications
 
-- support mobile push notifications (e.g. Pushover/Pushbullet)
-- push notification confirming auto-restart on UTC 00:00
-
-### npm package
+### general
 
 - implement this as an npm package
+- support mobile push notifications (e.g. Pushover/Pushbullet)
+- push notification confirming auto-restart on UTC 00:00
+- refactor to ES modules
