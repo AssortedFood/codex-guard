@@ -10,7 +10,7 @@ function parseJson(jsonPath) {
         console.error(`Failed to read plan.json: ${err.message}`);
         process.exit(1);
     }
-    return plan
+    return plan;
 }
 
 function filterJson(data, { fields }) {
@@ -25,7 +25,12 @@ function filterJson(data, { fields }) {
   });
 }
 
+function filterById(data, flags) {
+  return data.filter(item => Boolean(flags[item.id]));
+}
+
 module.exports = {
   parseJson,
   filterJson,
+  filterById,
 };

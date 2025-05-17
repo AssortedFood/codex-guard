@@ -14,10 +14,10 @@ function buildBooleanFlagSchema({ availableKeys }) {
 
 async function inferJsonSelectionFromFeedback({ planPath, feedbackText }) {
     // Load available IDs from plan.json
-    const plan = parseJson(planPath)
-    const filteredPlan = filterJson(plan, { fields: ['id', 'description'] });
+    const parsedPlan = parseJson(planPath);
+    const filteredPlan = filterJson(parsedPlan, { fields: ['id', 'description'] });
     const availableKeys = filteredPlan.map(item => item.id);
-    const model = 'gpt-4.1-mini'
+    const model = 'gpt-4.1-mini';
     const schema = buildBooleanFlagSchema({ availableKeys });
     const systemMessage = `
     You are a JSON flagging assistant.
@@ -29,7 +29,7 @@ async function inferJsonSelectionFromFeedback({ planPath, feedbackText }) {
     4. For each task ID, output:
         • true  → task is related
         • false → task is unrelated
-    `
+    `;
     const userMessage = `
     plan.json:
     ${filteredPlan}
@@ -38,13 +38,13 @@ async function inferJsonSelectionFromFeedback({ planPath, feedbackText }) {
     ${feedbackText}
     `;
 
-    const DEBUG = false
+    const DEBUG = false;
 
     if (DEBUG == true) {
         console.log('inferJsonSelectionFromFeedback called with:');
         console.log('feedbackText:', feedbackText);
         console.log('availableKeys:', availableKeys);
-        console.log('plan.json:',plan)
+        console.log('plan.json:',parsedPlan)
         console.log('filtered plan.json:',filteredPlan)
 
         const sample = {};
@@ -55,7 +55,7 @@ async function inferJsonSelectionFromFeedback({ planPath, feedbackText }) {
         console.log(parsed);
     }
 
-    const response = await fetchStructuredResponse(model, systemMessage, userMessage, schema)
+    const response = await fetchStructuredResponse(model, systemMessage, userMessage, schema);
     return response;
 }
 

@@ -69,3 +69,4 @@
 - support mobile push notifications (e.g. Pushover/Pushbullet)
 - push notification confirming auto-restart on UTC 00:00
 - refactor to ES modules
+- add ESLint
